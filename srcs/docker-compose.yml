@@ -1,0 +1,43 @@
+version: "3.8"
+
+services:
+  nginx:
+    build: ./nginx
+    ports:
+      - "443:443"  # Adjust port if needed
+    volumes:
+      - ./nginx/conf.d:/etc/nginx/conf.d  # Mount your Nginx config (optional)
+    restart: unless-stopped
+    networks:
+      - my-network
+
+  wordpress:
+    build: ./wordpress
+    volumes:
+      - wordpress_data:/var/www/html
+      - wordpress_uploads:/var/www/html/wp-content/uploads  # Optional for uploads
+    depends_on:
+      - mariadb
+    restart: unless-stopped
+    networks:
+      - my-network
+
+  mariadb:
+    build: ./mariadb
+    environment:
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-wordpress}
+      MYSQL_USER: ${MYSQL_USER:-wordpress_user}
+      MYSQL_PASSWORD: ${MYSQL_PASSWORD}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    restart: unless-stopped
+    networks:
+      - my-network
+
+volumes:
+  wordpress_data: {}
+  mariadb_data: {}
+
+networks:
+  my-network:
