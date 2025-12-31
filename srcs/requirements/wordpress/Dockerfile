@@ -1,18 +1,19 @@
-FROM debian:buster-slim
+# cat > ~/inception/srcs/requirements/wordpress/Dockerfile <<'EOF'
+FROM debian:stable-slim
 
-# Update package lists
-RUN apt-get update && apt-get install -y php-fpm php-mysqli
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    php-fpm php-mysql php-curl php-gd php-xml php-mbstring php-zip php-intl \
+    curl ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 
-# Install and configure WordPress
-RUN wget https://wordpress.org/latest.tar.gz && \
-    tar -xzf latest.tar.gz && \
-    cp -r wordpress /var/www/html && \
-    rm -rf latest.tar.gz wordpress
+# Prepare php-fpm to listen on 9000
+RUN sed -i 's|^listen = .*|listen = 9000|g' /etc/php/*/fpm/pool.d/www.conf \
+ && sed -i 's|^;clear_env = no|clear_env = no|g' /etc/php/*/fpm/pool.d/www.conf
 
-# Expose port for php-fpm (default 9000)
-EXPOSE 9000
+COPY tools/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Set working directory for php-fpm
 WORKDIR /var/www/html
-
-CMD ["php-fpm7", "-F"]
+EXPOSE 9000
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# EOF

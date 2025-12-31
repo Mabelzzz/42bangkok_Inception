@@ -1,19 +1,19 @@
-FROM debian:buster-slim
+# cat > ~/inception/srcs/requirements/mariadb/Dockerfile <<'EOF'
+FROM debian:stable-slim
 
-# Update package lists
-RUN apt-get update && apt-get install -y mariadb-server
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    mariadb-server \
+    mariadb-client \
+    ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
 
-# Expose port for MariaDB (default 3306)
+# Create runtime dirs
+RUN mkdir -p /run/mysqld /var/lib/mysql \
+ && chown -R mysql:mysql /run/mysqld /var/lib/mysql
+
+COPY tools/entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
+
 EXPOSE 3306
-
-# Allow remote connections (adjust as needed)
-RUN echo "bind-address = 0.0.0.0" >> /etc/mysql/my.cnf
-
-# Set environment variables for database access (optional)
-ENV MYSQL_DATABASE wordpress
-ENV MYSQL_USER wordpress_user
-ENV MYSQL_PASSWORD your_password
-ENV MYSQL_ROOT_PASSWORD your_root_password
-
-# Initialize database on startup
-CMD ["mysqld_safe"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# EOF
