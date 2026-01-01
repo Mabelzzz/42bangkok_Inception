@@ -1,0 +1,21 @@
+# 1. Git Folder
+.git
+.gitignore
+
+# 2. Secrets
+.env
+srcs/.env
+
+# 3. Docker & Config Files
+docker-compose.yml
+srcs/docker-compose.yml
+Makefile
+Dockerfile
+README.md
+DEV_DOC.md
+USER_DOC.md
+
+# 4. System Files
+.DS_Store
+Thumbs.db
+.vscode/

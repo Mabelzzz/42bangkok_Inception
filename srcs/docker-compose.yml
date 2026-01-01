@@ -1,11 +1,12 @@
 services:
   nginx:
     build: ./requirements/nginx
+    env_file:
+      - .env
     ports:
       - "443:443"
     volumes:
       - wordpress_data:/var/www/html
-      - wordpress_uploads:/var/www/html/wp-content/uploads
     depends_on:
       - wordpress
     restart: unless-stopped
@@ -18,7 +19,6 @@ services:
       - .env
     volumes:
       - wordpress_data:/var/www/html
-      - wordpress_uploads:/var/www/html/wp-content/uploads
     depends_on:
       - mariadb
     restart: unless-stopped
@@ -36,29 +36,19 @@ services:
       - my-network
 
 volumes:
-  mariadb_data: {}
-  wordpress_data: {}
-  wordpress_uploads: {}
-  # mariadb_data:
-  #   driver: local
-  #   driver_opts:
-  #     type: none
-  #     o: bind
-  #     device: /home/pnamwayk/data/mariadb
+  mariadb_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/pnamwayk/data/mariadb
 
-  # wordpress_data:
-  #   driver: local
-  #   driver_opts:
-  #     type: none
-  #     o: bind
-  #     device: /home/pnamwayk/data/wordpress
-
-  # wordpress_uploads:
-  #   driver: local
-  #   driver_opts:
-  #     type: none
-  #     o: bind
-  #     device: /home/pnamwayk/data/wordpress/uploads
+  wordpress_data:
+    driver: local
+    driver_opts:
+      type: none
+      o: bind
+      device: /home/pnamwayk/data/wordpress
 
 networks:
   my-network: {}

@@ -1,0 +1,32 @@
+# /etc/mysql/mariadb.conf.d/50-server.cnf
+
+[mysqld]
+
+# 1. Basic Settings
+# The user that runs the MariaDB process
+user                    = mysql
+# Process ID file location
+pid-file                = /run/mysqld/mysqld.pid
+# Socket file for local connections (within the container)
+socket                  = /run/mysqld/mysqld.sock
+# TCP Port to listen on
+port                    = 3306
+# Base directory for installation
+basedir                 = /usr
+# Directory where the actual database files are stored (Volume mounted)
+datadir                 = /var/lib/mysql
+# Temporary directory
+tmpdir                  = /tmp
+# Error log location
+lc-messages-dir         = /usr/share/mysql
+
+# 2. Networking (CRITICAL)
+# Bind to 0.0.0.0 to allow connections from ANY IP address.
+# If set to 127.0.0.1, only the container itself can connect (WordPress would fail).
+bind-address            = 0.0.0.0
+
+# 3. Performance & Logs
+# Query Cache (optional, but good for small setups)
+query_cache_size        = 16M
+# Location of the error log file
+log_error               = /var/log/mysql/error.log

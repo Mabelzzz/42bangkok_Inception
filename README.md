@@ -76,8 +76,7 @@ The project uses Docker volumes with bind mounts to ensure persistence.
 | Volume | Description |
 |------|------------|
 | mariadb_data | MariaDB database files |
-| wordpress_data | WordPress core files |
-| wordpress_uploads | Media uploads |
+| wordpress_data | WordPress core files && Media uploads |
 
 Volumes are stored on the host at:
 ```
@@ -105,7 +104,7 @@ cd Inception
 Create required directories on the VM:
 ```bash
 mkdir -p /home/pnamwayk/data/mariadb
-mkdir -p /home/pnamwayk/data/wordpress/uploads
+mkdir -p /home/pnamwayk/data/wordpress
 ```
 
 ### Run the project
