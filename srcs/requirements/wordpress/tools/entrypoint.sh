@@ -97,4 +97,4 @@ mkdir -p /run/php
 
 # Start PHP-FPM in foreground mode (-F)
 # Note: We use the full path to the binary (usually php-fpm8.2 in Debian Stable)
-exec /usr/sbin/php-fpm8.2 -F
+exec php-fpm -F
