@@ -27,7 +27,7 @@ RUN curl -O https://raw.githubusercontent.com/wp-cli/builds/gh-pages/phar/wp-cli
 
 # 3. Copy our custom PHP-FPM configuration
 # Note: Debian stable currently uses PHP 8.2. Adjust path if version changes.
-COPY conf/www.conf /etc/php/8.2/fpm/pool.d/www.conf
+COPY ./conf/www.conf /etc/php/8.2/fpm/pool.d/www.conf
 
 # 4. Create the directory for PHP socket (Required for PHP-FPM to start)
 RUN mkdir -p /run/php
