@@ -107,5 +107,5 @@ echo "[wordpress] Starting PHP-FPM..."
 mkdir -p /run/php
 
 # Start PHP-FPM in foreground mode (-F)
-# Note: We use the full path to the binary (usually php-fpm8.2 in Debian Stable)
+# Note: We use the full path to the binary (usually php-fpm8.4 in Debian Stable)
 exec "$PHP_FPM_BIN" -F
