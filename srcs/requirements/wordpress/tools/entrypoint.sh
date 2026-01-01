@@ -89,12 +89,22 @@ chown -R www-data:www-data "$WP_PATH"
 # ----------------------------------------------------------------------------
 # 5. Start PHP-FPM
 # ----------------------------------------------------------------------------
-
-echo "[wordpress] Starting PHP-FPM..."
+PHP_FPM_BIN="$(command -v php-fpm || true)"
+if [ -z "$PHP_FPM_BIN" ]; then
+  PHP_FPM_BIN="$(command -v php-fpm8.4 || true)"
+fi
+if [ -z "$PHP_FPM_BIN" ]; then
+  PHP_FPM_BIN="$(command -v php-fpm8.3 || true)"
+fi
+if [ -z "$PHP_FPM_BIN" ]; then
+  echo "[wordpress] ERROR: php-fpm not found in container"
+  ls -la /usr/sbin || true
+  exit 1
+fi
 
 # Ensure the PID directory exists
 mkdir -p /run/php
 
 # Start PHP-FPM in foreground mode (-F)
 # Note: We use the full path to the binary (usually php-fpm8.2 in Debian Stable)
-exec php-fpm -F
+exec "$PHP_FPM_BIN" -F
