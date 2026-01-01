@@ -101,6 +101,7 @@ if [ -z "$PHP_FPM_BIN" ]; then
   ls -la /usr/sbin || true
   exit 1
 fi
+echo "[wordpress] Starting PHP-FPM..."
 
 # Ensure the PID directory exists
 mkdir -p /run/php
