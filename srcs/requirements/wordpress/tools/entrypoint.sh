@@ -1,12 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# ----------------------------------------------------------------------------
-# 1. Validation & Configuration
-# ----------------------------------------------------------------------------
+# =====================================================================
+# WordPress Entrypoint Script
+# - Waits for MariaDB
+# - Installs WordPress automatically (first run only)
+# - Starts PHP-FPM in foreground
+# =====================================================================
 
-# Check if essential environment variables are provided in .env
-# If any are missing, the script will exit with an error.
+WP_PATH="/var/www/html"
+
+# ---------------------------------------------------------------------
+# 1. Validate required environment variables
+# ---------------------------------------------------------------------
 : "${WP_DB_NAME:?WP_DB_NAME is required}"
 : "${WP_DB_USER:?WP_DB_USER is required}"
 : "${WP_DB_PASSWORD:?WP_DB_PASSWORD is required}"
@@ -17,18 +23,17 @@ set -euo pipefail
 : "${WP_ADMIN_PASSWORD:?WP_ADMIN_PASSWORD is required}"
 : "${WP_ADMIN_EMAIL:?WP_ADMIN_EMAIL is required}"
 
-WP_PATH="/var/www/html"
+# ---------------------------------------------------------------------
+# 2. Wait for MariaDB to be ready
+# ---------------------------------------------------------------------
+echo "[wordpress] Waiting for MariaDB at ${WP_DB_HOST}..."
 
-# ----------------------------------------------------------------------------
-# 2. Wait for Database Connection
-# ----------------------------------------------------------------------------
-
-echo "[wordpress] Waiting for MariaDB at $WP_DB_HOST..."
-
-# Loop up to 30 times (approx 60 seconds) to check if MariaDB is ready
 for i in {1..30}; do
-    # Use a small PHP one-liner to test the database connection
-    if php -r "mysqli_report(MYSQLI_REPORT_OFF); \$m=@new mysqli('${WP_DB_HOST}', '${WP_DB_USER}', '${WP_DB_PASSWORD}', '${WP_DB_NAME}'); if(\$m->connect_errno) exit(1); exit(0);" >/dev/null 2>&1; then
+    if php -r "
+        mysqli_report(MYSQLI_REPORT_OFF);
+        \$m = @new mysqli('${WP_DB_HOST}', '${WP_DB_USER}', '${WP_DB_PASSWORD}', '${WP_DB_NAME}');
+        exit(\$m->connect_errno ? 1 : 0);
+    " >/dev/null 2>&1; then
         echo "[wordpress] MariaDB is connected!"
         break
     fi
@@ -36,76 +41,64 @@ for i in {1..30}; do
     sleep 2
 done
 
-# ----------------------------------------------------------------------------
-# 3. Install WordPress (Only if not already installed)
-# ----------------------------------------------------------------------------
+# ---------------------------------------------------------------------
+# 3. Download WordPress core (only once)
+# ---------------------------------------------------------------------
+if [ ! -f "${WP_PATH}/wp-load.php" ]; then
+    echo "[wordpress] Downloading WordPress core..."
+    wp core download --path="${WP_PATH}" --allow-root
+fi
 
-if [ ! -f "$WP_PATH/wp-config.php" ]; then
-    echo "[wordpress] No installation found. Starting fresh setup..."
-
-    # A. Download WordPress Core files
-    echo "[wordpress] Downloading WordPress..."
-    wp core download --path="$WP_PATH" --allow-root
-
-    # B. Generate wp-config.php
-    # Automatically links to the Database using env vars
-    echo "[wordpress] Creating config..."
+# ---------------------------------------------------------------------
+# 4. Create wp-config.php if missing
+# ---------------------------------------------------------------------
+if [ ! -f "${WP_PATH}/wp-config.php" ]; then
+    echo "[wordpress] Creating wp-config.php..."
     wp config create \
-        --dbname="$WP_DB_NAME" \
-        --dbuser="$WP_DB_USER" \
-        --dbpass="$WP_DB_PASSWORD" \
-        --dbhost="$WP_DB_HOST" \
-        --path="$WP_PATH" \
+        --dbname="${WP_DB_NAME}" \
+        --dbuser="${WP_DB_USER}" \
+        --dbpass="${WP_DB_PASSWORD}" \
+        --dbhost="${WP_DB_HOST}" \
+        --path="${WP_PATH}" \
         --allow-root
+fi
 
-    # C. Run the Installation
-    # Creates the Admin account and sets the site title/URL
-    echo "[wordpress] Installing site..."
+# ---------------------------------------------------------------------
+# 5. Install WordPress if not installed yet
+# This prevents showing /wp-admin/install.php
+# ---------------------------------------------------------------------
+if ! wp core is-installed --path="${WP_PATH}" --allow-root >/dev/null 2>&1; then
+    echo "[wordpress] Installing WordPress..."
     wp core install \
-        --url="$WP_URL" \
-        --title="$WP_TITLE" \
-        --admin_user="$WP_ADMIN_USER" \
-        --admin_password="$WP_ADMIN_PASSWORD" \
-        --admin_email="$WP_ADMIN_EMAIL" \
-        --path="$WP_PATH" \
+        --url="${WP_URL}" \
+        --title="${WP_TITLE}" \
+        --admin_user="${WP_ADMIN_USER}" \
+        --admin_password="${WP_ADMIN_PASSWORD}" \
+        --admin_email="${WP_ADMIN_EMAIL}" \
+        --skip-email \
+        --path="${WP_PATH}" \
         --allow-root
-
-    # (Optional) Create a secondary user (Editor/Author) if needed for evaluation
-    # wp user create bob bob@example.com --role=author --user_pass=password123 --allow-root --path="$WP_PATH"
-
-    echo "[wordpress] Setup finished successfully."
 else
-    echo "[wordpress] wp-config.php already exists. Skipping setup."
+    echo "[wordpress] WordPress already installed."
 fi
 
-# ----------------------------------------------------------------------------
-# 4. Final Permission Check
-# ----------------------------------------------------------------------------
-
-# Ensure www-data owns the files so plugins/uploads work correctly
+# ---------------------------------------------------------------------
+# 6. Fix permissions (required for uploads & plugins)
+# ---------------------------------------------------------------------
 echo "[wordpress] Enforcing permissions..."
-chown -R www-data:www-data "$WP_PATH"
+chown -R www-data:www-data "${WP_PATH}"
 
-# ----------------------------------------------------------------------------
-# 5. Start PHP-FPM
-# ----------------------------------------------------------------------------
-PHP_FPM_BIN="$(command -v php-fpm || true)"
-if [ -z "$PHP_FPM_BIN" ]; then
-  PHP_FPM_BIN="$(command -v php-fpm8.4 || true)"
-fi
-if [ -z "$PHP_FPM_BIN" ]; then
-  PHP_FPM_BIN="$(command -v php-fpm8.3 || true)"
-fi
-if [ -z "$PHP_FPM_BIN" ]; then
-  echo "[wordpress] ERROR: php-fpm not found in container"
-  ls -la /usr/sbin || true
-  exit 1
-fi
-echo "[wordpress] Starting PHP-FPM..."
+# ---------------------------------------------------------------------
+# 7. Start PHP-FPM (foreground, PID 1)
+# Supports PHP 8.4 / 8.3 / generic php-fpm
+# ---------------------------------------------------------------------
+PHP_FPM_BIN="$(command -v php-fpm8.4 || command -v php-fpm8.3 || command -v php-fpm || true)"
 
-# Ensure the PID directory exists
+if [ -z "${PHP_FPM_BIN}" ]; then
+    echo "[wordpress] ERROR: php-fpm binary not found"
+    exit 1
+fi
+
+echo "[wordpress] Starting PHP-FPM using ${PHP_FPM_BIN}"
 mkdir -p /run/php
-
-# Start PHP-FPM in foreground mode (-F)
-# Note: We use the full path to the binary (usually php-fpm8.4 in Debian Stable)
-exec "$PHP_FPM_BIN" -F
+exec "${PHP_FPM_BIN}" -F
